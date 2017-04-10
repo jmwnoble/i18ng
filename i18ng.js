@@ -1,22 +1,35 @@
 angular.module('i18ng', ['ng'])
 angular.module('i18ng')
-  .provider('i18ng', function() {
+  .provider('i18ng', function () {
 
     'use strict'
 
     var i18n = window.i18n
-
+    var modules = [];
     var options = []
-    this.init = function() {
+    this.init = function () {
       options = Array.prototype.slice.call(arguments)
     }
 
-    this.$get = ['$rootScope', function($rootScope) {
+    this.use = function (arg) {
+      modules.push(arg);
+      return this;
+    }
+
+    var callUse = function () {
+      angular.forEach(modules,
+        function (val, attr) {
+          i18n.use.call(i18n, val);
+        });
+      return i18n;
+    }
+
+    this.$get = ['$rootScope', function ($rootScope) {
       var opts = options[0]
-      var callback = options[1] || function() {}
+      var callback = options[1] || function () { }
       if (typeof opts === 'function') callback = opts, opts = {}
 
-      i18n.init.call(i18n, opts, function(t) {
+      callUse().i18n.init.call(i18n, opts, function (t) {
         i18n.t = t
         if (!$rootScope.$$phase)
           $rootScope.$digest()
@@ -27,21 +40,21 @@ angular.module('i18ng')
     }]
   })
 
-  .filter('t', ['i18ng', function(i18ng) {
+  .filter('t', ['i18ng', function (i18ng) {
     'use strict'
-    return function(input) {
+    return function (input) {
       return i18n.t.apply(null, arguments)
     }
   }])
 
-  .directive('i18ng', ['i18ng', '$parse', function(i18ng, $parse) {
+  .directive('i18ng', ['i18ng', '$parse', function (i18ng, $parse) {
     'use strict'
 
     var attrRx = /^i18ng(.+?)(Opts)?$/
     var nestedRx = /<#([A-Za-z0-9\-\_]+)>([^<]+)<\/[A-Za-z0-9\-\_]+>|<([A-Za-z0-9\-\_]+)>/g
 
     function translateAll(scope, element, translations) {
-      angular.forEach(translations, function(val, attr) {
+      angular.forEach(translations, function (val, attr) {
         translate(scope, element, translations, attr)
       })
     }
@@ -53,11 +66,11 @@ angular.module('i18ng')
 
       element.empty()
 
-      while(match = nestedRx.exec(val)) {
+      while (match = nestedRx.exec(val)) {
         var tagName = match[1] || match[3]
         var content = match[2]
         var index = val.indexOf(match[0])
-        var tag = tags.filter('[i18ng-tag-name="'+tagName+'"]:first')
+        var tag = tags.filter('[i18ng-tag-name="' + tagName + '"]:first')
         if (content) tag.html(content)
         element.append(val.substring(lastIndex, index), tag)
         lastIndex = index + match[0].length
@@ -84,13 +97,13 @@ angular.module('i18ng')
 
     return {
       restrict: 'A',
-      link: function(scope, element, attrs) {
+      link: function (scope, element, attrs) {
 
         var translations = {}
         var t = translate.bind(null, scope, element, translations)
         var ignore = ['opts', 'html', 'nestedhtml', 'tagname']
 
-        angular.forEach(attrs, function(val, key) {
+        angular.forEach(attrs, function (val, key) {
           var match = key.match(attrRx)
           if (match && match[1] && !~ignore.indexOf(match[1].toLowerCase())) {
             var attr = match[1].toLowerCase()
@@ -100,9 +113,9 @@ angular.module('i18ng')
             if (!translations[attr]) translations[attr] = {}
             translations[attr][prop] = $parse(val)
 
-            scope[watch](function() {
+            scope[watch](function () {
               return translations[attr][prop](scope)
-            }, function() {
+            }, function () {
               t(attr)
             })
           }
@@ -116,18 +129,18 @@ angular.module('i18ng')
             getOpts: hasOpts ? $parse(attrs.i18ngOpts) : null
           }
 
-          scope.$watch(function() {
+          scope.$watch(function () {
             return translations[attr].getKey(scope)
-          }, function() { t(attr) })
+          }, function () { t(attr) })
 
           if (hasOpts) {
-            scope.$watchCollection(function() {
+            scope.$watchCollection(function () {
               return translations[attr].getOpts(scope)
-            }, function() { t(attr) })
+            }, function () { t(attr) })
           }
         }
 
-        scope.$on('i18ngInitComplete', function() {
+        scope.$on('i18ngInitComplete', function () {
           translateAll(scope, element, translations)
         })
 
