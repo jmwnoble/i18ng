@@ -29,7 +29,7 @@ angular.module('i18ng')
       var callback = options[1] || function () { }
       if (typeof opts === 'function') callback = opts, opts = {}
 
-      callUse().i18n.init.call(i18n, opts, function (t) {
+      callUse().init.call(i18n, opts, function (t) {
         i18n.t = t
         if (!$rootScope.$$phase)
           $rootScope.$digest()
